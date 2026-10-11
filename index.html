@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GCT Scratch & Reveal</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    padding: 25px 15px;
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #dbeafe, #fff1d6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #172554;
+}
+
+.container {
+    width: 100%;
+    max-width: 480px;
+    text-align: center;
+}
+
+h1 {
+    font-size: 30px;
+    margin-bottom: 10px;
+}
+
+.description {
+    color: #475569;
+    line-height: 1.6;
+}
+
+.card {
+    background: white;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 10px 35px #00000020;
+}
+
+.poster-area {
+    position: relative;
+    width: 100%;
+    min-height: 350px;
+    background: white;
+}
+
+#poster {
+    width: 100%;
+    min-height: 350px;
+    display: block;
+    object-fit: contain;
+}
+
+#scratchCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+    cursor: crosshair;
+}
+
+.welcome {
+    padding: 20px 15px;
+    background: white;
+}
+
+.welcome h2 {
+    color: #1d4ed8;
+    font-size: 22px;
+}
+
+.welcome p {
+    line-height: 1.6;
+    color: #475569;
+}
+
+button {
+    border: none;
+    border-radius: 10px;
+    padding: 13px 18px;
+    margin: 12px 4px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+#reset {
+    background: #1d4ed8;
+    color: white;
+}
+
+#reveal {
+    background: #dbeafe;
+    color: #1e3a8a;
+}
+
+#message {
+    font-weight: bold;
+    margin-top: 15px;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+```
+<h1>🎁 Scratch to Reveal!</h1>
+
+<p class="description">
+    Scratch the card with your finger to reveal a special surprise!
+</p>
+
+<div class="card">
+
+    <div class="poster-area" id="posterArea">
+
+        <img id="poster" src="poster.jpg"
+             alt="Gnanamani College Poster">
+
+        <canvas id="scratchCanvas"></canvas>
+
+    </div>
+
+    <div class="welcome" id="welcome" hidden>
+        <h2>🎓 Welcome to Gnanamani College of Technology!</h2>
+
+        <p>
+            Discover Innovation, Creativity and Excellence!
+            <br><br>
+            ✨ Create Today, Achieve Tomorrow! ✨
+        </p>
+    </div>
+
+</div>
+
+<p id="message">👆 Scratch here to reveal the poster!</p>
+
+<button id="reset">Start Again</button>
+<button id="reveal">Reveal Poster</button>
+```
+
+</div>
+
+<script>
+const canvas = document.getElementById("scratchCanvas");
+const ctx = canvas.getContext("2d");
+
+const poster = document.getElementById("poster");
+const area = document.getElementById("posterArea");
+const welcome = document.getElementById("welcome");
+const message = document.getElementById("message");
+
+let drawing = false;
+let isRevealed = false;
+let lastCheck = 0;
+
+function setupCanvas() {
+    const width = area.clientWidth;
+    const height = Math.max(350, poster.offsetHeight);
+
+    canvas.width = width * devicePixelRatio;
+    canvas.height = height * devicePixelRatio;
+
+    canvas.style.width = width + "px";
+    canvas.style.height = height + "px";
+
+    ctx.setTransform(
+        devicePixelRatio, 0, 0,
+        devicePixelRatio, 0, 0
+    );
+
+    drawCover(width, height);
+}
+
+function drawCover(width, height) {
+    isRevealed = false;
+    drawing = false;
+
+    canvas.hidden = false;
+    welcome.hidden = true;
+
+    ctx.globalCompositeOperation = "source-over";
+
+    const gradient = ctx.createLinearGradient(0, 0, width, height);
+
+    gradient.addColorStop(0, "#9ca3af");
+    gradient.addColorStop(0.5, "#f8fafc");
+    gradient.addColorStop(1, "#64748b");
+
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.fillStyle = "#1e293b";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = "bold 23px Arial";
+
+    ctx.fillText("SCRATCH HERE", width / 2, height / 2 - 12);
+
+    ctx.font = "16px Arial";
+    ctx.fillText("Reveal your surprise!", width / 2, height / 2 + 22);
+
+    ctx.globalCompositeOperation = "destination-out";
+
+    message.textContent = "👆 Scratch here to reveal the poster!";
+}
+
+function scratch(e) {
+    if (!drawing || isRevealed) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    ctx.beginPath();
+    ctx.arc(x, y, 24, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (Date.now() - lastCheck > 250) {
+        lastCheck = Date.now();
+        checkScratchProgress();
+    }
+}
+
+function checkScratchProgress() {
+    if (isRevealed) return;
+
+    const pixels = ctx.getImageData(
+        0, 0, canvas.width, canvas.height
+    ).data;
+
+    let transparent = 0;
+    let total = 0;
+
+    for (let i = 3; i < pixels.length; i += 48) {
+        total++;
+
+        if (pixels[i] < 80) {
+            transparent++;
+        }
+    }
+
+    if (total > 0 && transparent / total > 0.40) {
+        revealPoster();
+    }
+}
+
+function revealPoster() {
+    if (isRevealed) return;
+
+    isRevealed = true;
+    drawing = false;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    canvas.hidden = true;
+    welcome.hidden = false;
+
+    message.textContent = "🎉 Surprise revealed successfully!";
+}
+
+canvas.addEventListener("pointerdown", function(e) {
+    if (isRevealed) return;
+
+    drawing = true;
+    canvas.setPointerCapture(e.pointerId);
+    scratch(e);
+});
+
+canvas.addEventListener("pointermove", scratch);
+
+canvas.addEventListener("pointerup", function() {
+    drawing = false;
+});
+
+canvas.addEventListener("pointercancel", function() {
+    drawing = false;
+});
+
+document.getElementById("reset").addEventListener("click", setupCanvas);
+
+document.getElementById("reveal").addEventListener("click", revealPoster);
+
+poster.addEventListener("load", setupCanvas);
+
+poster.addEventListener("error", function() {
+    console.warn("poster.jpg not found. Add your college poster image.");
+    setupCanvas();
+});
+
+window.addEventListener("resize", setupCanvas);
+
+if (poster.complete) {
+    setupCanvas();
+}
+</script>
+
+</body>
+</html>
